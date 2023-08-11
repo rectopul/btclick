@@ -22,7 +22,7 @@ function fazerPergunta(pergunta) {
 async function createBrowserWithProxy(proxy) {
     const anonymizedProxy = await proxyChain.anonymizeProxy(`http://${proxy}`);
     const browser = await puppeteer.launch({
-      args: [`--proxy-server=${anonymizedProxy}`],
+      args: [`--proxy-server=${anonymizedProxy}`, "--no-sandbox"],
       headless: false,
     });
   
