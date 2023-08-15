@@ -41,6 +41,8 @@ async function createBrowserWithProxy(theProxy) {
       console.log(`proxy usado: `, theProxy)
       const options = new chrome.Options();
       options.addArguments(`--proxy-server=socks5://${theProxy}`);
+      options.addArguments('--disable-dev-shm-usage')
+      options.addArguments('--no-sandbox')
       options.addArguments('--ignore-certificate-errors')
 
       var driver = new webdriver.Builder()
