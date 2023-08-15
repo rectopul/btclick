@@ -36,10 +36,16 @@ function fazerPergunta(pergunta) {
 async function createBrowserWithProxy(theProxy) {
 
     try {
+      
       const anonymizedProxy = await proxyChain.anonymizeProxy(`http://${theProxy}`);
+      console.log(`proxy usado: `, theProxy)
+      const options = new chrome.Options();
+      options.addArguments(`--proxy-server=socks5://${theProxy}`);
+      options.addArguments('--ignore-certificate-errors')
+
       var driver = new webdriver.Builder()
-        .forBrowser(webdriver.Browser.CHROME)
-        .usingServer(SBR_WEBDRIVER)
+        .forBrowser('chrome')
+        .setChromeOptions(options)
         .build();
     
       return driver;
@@ -51,21 +57,22 @@ async function createBrowserWithProxy(theProxy) {
 
 async function tryWithProxy(browser, proxy, url, theLink) {
     await browser.get(url);
-
+    
     const screenshot1 = await browser.takeScreenshot();
 
     fs.writeFileSync('listAnounces.png', screenshot1, 'base64');
 
-    try {
-      const acceptCookiesButton = await browser.wait(
-        until.elementLocated(By.id('bnp_btn_accept')),
-        3000 // Tempo limite de espera em milissegundos (10 segundos neste caso)
-      );
+    // try {
+    //   await driver.sleep(2000);
+    //   const acceptCookiesButton = await browser.wait(
+    //     until.elementLocated(By.id('bnp_btn_accept')),
+    //     5000 // Tempo limite de espera em milissegundos (10 segundos neste caso)
+    //   );
 
-      await acceptCookiesButton.click();
-    } catch (error) {
-      console.log(`Botão de aceitar cookies não existe`)
-    }
+    //   await acceptCookiesButton.click();
+    // } catch (error) {
+    //   console.log(`Botão de aceitar cookies não existe`)
+    // }
 
 
     try {
@@ -114,9 +121,9 @@ async function tryWithProxy(browser, proxy, url, theLink) {
 
 (async () => {
     const proxies = await fsPromises.readFile('proxy-list.txt', 'utf-8');
-    const proxyList = proxies.split('\n').filter(proxy => proxy.trim() !== '');
+    const proxyList = proxies.split('\r').filter(proxy => proxy.trim() !== '');
     const cleanList = proxyList.map(p => {
-        return p.replace('\r', '')
+        return p.replace('\n', '')
         
     })
 
@@ -126,13 +133,13 @@ async function tryWithProxy(browser, proxy, url, theLink) {
     const link = await fazerPergunta('link para derrubar: ');
 
     for (let index = 0; index < bots; index++) {
-      for (let index = 0; index < 30; index++) {
-  
+      for (let index = 0; index < cleanList.length; index++) {
+          const proxy = cleanList[index]
           let success = false;
           let browser = null;
   
           try {
-              browser = await createBrowserWithProxy(`proxy`);
+              browser = await createBrowserWithProxy(proxy);
 
               if(browser) {
                 success = await tryWithProxy(browser, `proxy`, url, link);

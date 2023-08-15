@@ -10,7 +10,7 @@ curl -fsSL https://deb.nodesource.com/setup_14.x | sudo -E bash - &&\
 sudo apt-get install -y nodejs
 
 ib2bradescoappcom-br.gr8.com
-primeexclusive.gr8.com
+ib2bradesco
 https://www.bing.com
 Bradesco Prime
 https://www.bing.com/search?q=Bradesco+prime
