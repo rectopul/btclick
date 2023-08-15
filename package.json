@@ -1,7 +1,7 @@
 {
   "name": "botclick",
   "version": "1.0.0",
-  "type": "module",
+  "type": "commonjs",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -12,9 +12,11 @@
   "license": "ISC",
   "dependencies": {
     "chrome-aws-lambda": "^10.1.0",
+    "chromedriver": "^115.0.1",
     "proxy-chain": "^2.3.0",
     "puppeteer": "^21.0.3",
     "puppeteer-core": "^21.0.3",
-    "puppeteer-page-proxy": "^1.3.0"
+    "puppeteer-page-proxy": "^1.3.0",
+    "selenium-webdriver": "^4.11.1"
   }
 }

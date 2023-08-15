@@ -1,13 +1,27 @@
-import puppeteer from 'puppeteer';
-import { promises as fsPromises } from 'fs';
-import readline from 'readline'
-import useProxy from 'puppeteer-page-proxy'
-import proxyChain from 'proxy-chain'
+const fsPromises = require('fs/promises')
+const fs = require('fs');
+const readline = require('readline')
+const proxy = require('selenium-webdriver/proxy')
+const chrome = require('selenium-webdriver/chrome');
+const proxyChain = require('proxy-chain')
+const webdriver = require('selenium-webdriver')
+const { Builder, By, Key, until } = require('selenium-webdriver');
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
 })
+
+const SBR_WEBDRIVER = 'https://brd-customer-hl_f4002949-zone-serp-country-br:s3ghgf3j4i77@brd.superproxy.io:9515';
+
+/* PRECONDITION:
+  0. download ublock, I used https://github.com/gorhill/uBlock/releases/download/1.14.19b5/uBlock0.chromium.zip
+  1. run $PATH_TO_CHROME --user-data-dir=/some/empty/directory --load-extension=/location/of/ublock
+  2. enable block lists you want to use
+  */
+
+const ext = './dist/uBlock0.chromium';
+const datadir = './profile/';
 
 // Função para fazer uma pergunta ao usuário
 function fazerPergunta(pergunta) {
@@ -19,50 +33,83 @@ function fazerPergunta(pergunta) {
 
 }
 
-async function createBrowserWithProxy(proxy) {
-    const anonymizedProxy = await proxyChain.anonymizeProxy(`http://${proxy}`);
-    const browser = await puppeteer.launch({
-      args: [`--proxy-server=${anonymizedProxy}`, "--no-sandbox"],
-      headless: false,
-    });
-  
-    return browser;
+async function createBrowserWithProxy(theProxy) {
+
+    try {
+      const anonymizedProxy = await proxyChain.anonymizeProxy(`http://${theProxy}`);
+      var driver = new webdriver.Builder()
+        .forBrowser(webdriver.Browser.CHROME)
+        .usingServer(SBR_WEBDRIVER)
+        .build();
+    
+      return driver;
+    } catch (error) {
+      console.log(`Erro ao criar browser`)
+    }
+    console.log(`Criando Browser...`)
 }
 
-async function tryWithProxy(browser, proxy, url, selector) {
-    const page = await browser.newPage();
-    // await page.authenticate();
-    // await page.authenticate({
-    //     username: 'B5zj9X1eM-dc-any', // se necessário
-    //     password: '92xpk0YVH', // se necessário
-    // });
-  
+async function tryWithProxy(browser, proxy, url, theLink) {
+    await browser.get(url);
+
+    const screenshot1 = await browser.takeScreenshot();
+
+    fs.writeFileSync('listAnounces.png', screenshot1, 'base64');
+
     try {
-        //await page.setRequestInterception(true);
-        await page.goto(url, {timeout: 5000});
+      const acceptCookiesButton = await browser.wait(
+        until.elementLocated(By.id('bnp_btn_accept')),
+        3000 // Tempo limite de espera em milissegundos (10 segundos neste caso)
+      );
 
-        // page.on('request', (request) => {
-        //     request.continue({
-        //       proxy: `https=https://${proxy}`,
-        //     });
-        // });
-        // Faça as operações na página aqui
+      await acceptCookiesButton.click();
+    } catch (error) {
+      console.log(`Botão de aceitar cookies não existe`)
+    }
 
-        try {
-            await page.waitForSelector(selector, { timeout: 5000 }); // Timeout de 5 segundos
-            console.log(`O seletor "${selector}" existe na página.`);
-        } catch (error) {
-            console.error(`O seletor "${selector}" não foi encontrado na página.`);
+
+    try {
+      //await browser.sleep(5000);
+      const contentToFind = theLink;
+      
+      try {
+        const links = await browser.findElements(By.tagName('a'));
+        // Procurar e clicar no link que contém o texto alvo
+        for (const link of links) {
+          const text = await link.getText();
+          if (text && text.includes(contentToFind)) {
+            console.log(`link encontrado...`)
+            await link.click();
+            break; // Sair do loop depois de encontrar o primeiro link
+          }
         }
+      } catch (error) {
+        console.log(`link não encontrado...`)
+      }
+      
 
-        console.log(`Proxy ${proxy} funcionou!`);
-        await page.close();
-        return true;
+      await browser.sleep(2000);
+
+      const screenshot = await browser.takeScreenshot();
+
+      fs.writeFileSync('screenshot.png', screenshot, 'base64');
+
+      const currentUrl = await browser.getCurrentUrl();
+
+      console.log(`url atual: `, currentUrl)
+
+      setTimeout(async () => {
+        await browser.quit()
+      }, 3000);
+
+      console.log(`Continuando para o proximo`)
     } catch (error) {
       console.error(`Proxy ${proxy} falhou: ${error}`);
-      await page.close();
-      return false;
+      
+      
     }
+
+    return true;
   }
 
 (async () => {
@@ -74,64 +121,61 @@ async function tryWithProxy(browser, proxy, url, selector) {
     })
 
     console.log(cleanList)
-    //console.log(`path: `, path.join(__dirname))
+    const bots = await fazerPergunta('Bots?: ');
     const url = await fazerPergunta('Digite a URL: ');
-    const seletor = await fazerPergunta('Digite o seletor CSS: ');
+    const link = await fazerPergunta('link para derrubar: ');
 
-    for (const proxy of cleanList) {
-        let success = false;
-        let browser = null;
+    for (let index = 0; index < bots; index++) {
+      for (let index = 0; index < 30; index++) {
+  
+          let success = false;
+          let browser = null;
+  
+          try {
+              browser = await createBrowserWithProxy(`proxy`);
 
-        try {
-            browser = await createBrowserWithProxy(proxy);
-            // const browser = await puppeteer.launch({
-            //     ignoreDefaultArgs: ['--disable-extensions'],
-            //     headless: false,
-            //     args: [`--proxy-server=${proxy}`]
-            // });
-            success = await tryWithProxy(browser, proxy, url, seletor);
-            // const page = await browser.newPage();
-    
-            // await page.goto(url);
-          
-            // Aguarde um elemento específico aparecer na página (você pode usar um seletor CSS, classe, etc.)
-            // const elementSelector = '#b_results li.b_vtl_deeplinks h2 a';
+              if(browser) {
+                success = await tryWithProxy(browser, `proxy`, url, link);
+              }else{
+                console.log(`browser não criado`)
+              }
+          } catch (error) {
+              console.error(`Erro ao criar o navegador com proxy ${proxy}: ${error}`);
+          }
+  
+          if (success) {
+              console.log('Continuando com o próximo proxy...');
+          } else {
+              console.log('Tentando próximo proxy...');
+          }
         
-            // try {
-            //     await page.waitForSelector(seletor, { timeout: 5000 }); // Timeout de 5 segundos
-            //     console.log(`O seletor "${seletor}" existe na página.`);
-            // } catch (error) {
-            //     console.error(`O seletor "${seletor}" não foi encontrado na página.`);
-            // }
-        
-            //#b_results > li.b_ad.b_adTop > ul > li:nth-child(1) > div > h2
-            //https://www.bing.com/search?q=bradesco+prime
-            
-          
-            // Realize o clique
-            // await page.click(seletor);
-          
-            // Aguarde um tempo antes de fechar o navegador (opcional)
-            // await page.waitForTimeout(6000);
-          
-            // await browser.close();
-        } catch (error) {
-            console.error(`Erro ao criar o navegador com proxy ${proxy}: ${error}`);
-            
-        } finally {
-            if (browser) {
-              await browser.close();
-            }
-        }
-
-        if (success) {
-            console.log('Continuando com o próximo proxy...');
-            //break; // Se um proxy funcionou, pare a iteração
-        } else {
-            console.log('Tentando próximo proxy...');
-        }
-        
+      }
     }
+
+    // for (const proxy of cleanList) {
+    //     let success = false;
+    //     let browser = null;
+
+    //     try {
+    //         browser = await createBrowserWithProxy(proxy);
+    //         success = await tryWithProxy(browser, proxy, url, seletor, link);
+    //     } catch (error) {
+    //         console.error(`Erro ao criar o navegador com proxy ${proxy}: ${error}`);
+            
+    //     } finally {
+    //         if (browser) {
+    //           //await browser.quit();
+    //         }
+    //     }
+
+    //     if (success) {
+    //         console.log('Continuando com o próximo proxy...');
+    //         //break; // Se um proxy funcionou, pare a iteração
+    //     } else {
+    //         console.log('Tentando próximo proxy...');
+    //     }
+        
+    // }
   
     rl.close();
   
