@@ -121,10 +121,9 @@ async function tryWithProxy(browser, proxy, url, theLink) {
 
 (async () => {
     const proxies = await fsPromises.readFile('proxy-list.txt', 'utf-8');
-    const proxyList = proxies.split('\r').filter(proxy => proxy.trim() !== '');
+    const proxyList = proxies.split('\n').filter(proxy => proxy.trim() !== '');
     const cleanList = proxyList.map(p => {
         return p.replace('\n', '')
-        
     })
 
     console.log(cleanList)
