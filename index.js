@@ -50,7 +50,7 @@ async function createBrowserWithProxy(theProxy) {
     
       return driver;
     } catch (error) {
-      console.log(`Erro ao criar browser`)
+      console.log(`Erro ao criar browser`, error)
     }
     console.log(`Criando Browser...`)
 }
